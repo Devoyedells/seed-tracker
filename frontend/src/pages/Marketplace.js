@@ -1,0 +1,193 @@
+import React, { useState, useEffect } from 'react';
+import { Search, Filter, MapPin, Phone, Package } from 'lucide-react';
+import { Card } from '../components/ui/card';
+import { Button } from '../components/ui/button';
+import { Input } from '../components/ui/input';
+import { Badge } from '../components/ui/badge';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../components/ui/select';
+import api from '../utils/api';
+import { toast } from 'sonner';
+
+export default function Marketplace() {
+  const [seeds, setSeeds] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [searchTerm, setSearchTerm] = useState('');
+  const [selectedRegion, setSelectedRegion] = useState('all');
+  const [selectedCrop, setSelectedCrop] = useState('all');
+  const [selectedStatus, setSelectedStatus] = useState('all');
+
+  const regions = ['Eastern Province', 'Northern Province', 'North West Province', 'Southern Province', 'Western Area'];
+
+  useEffect(() => {
+    fetchSeeds();
+  }, [selectedRegion, selectedCrop, selectedStatus]);
+
+  const fetchSeeds = async () => {
+    try {
+      setLoading(true);
+      const params = {};
+      if (selectedRegion !== 'all') params.region = selectedRegion;
+      if (selectedCrop !== 'all') params.crop_type = selectedCrop;
+      if (selectedStatus !== 'all') params.status = selectedStatus;
+      if (searchTerm) params.search = searchTerm;
+
+      const response = await api.get('/seeds', { params });
+      setSeeds(response.data);
+    } catch (error) {
+      console.error('Error fetching seeds:', error);
+      toast.error('Failed to load seeds');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleSearch = (e) => {
+    e.preventDefault();
+    fetchSeeds();
+  };
+
+  const getStatusColor = (status) => {
+    switch (status) {
+      case 'available': return 'bg-green-100 text-green-800 border-green-200';
+      case 'low_stock': return 'bg-yellow-100 text-yellow-800 border-yellow-200';
+      case 'out_of_stock': return 'bg-red-100 text-red-800 border-red-200';
+      default: return 'bg-gray-100 text-gray-800 border-gray-200';
+    }
+  };
+
+  const getCertificationColor = (status) => {
+    switch (status) {
+      case 'certified': return 'bg-blue-100 text-blue-800 border-blue-200';
+      case 'approved': return 'bg-green-100 text-green-800 border-green-200';
+      case 'pending': return 'bg-gray-100 text-gray-800 border-gray-200';
+      default: return 'bg-gray-100 text-gray-800 border-gray-200';
+    }
+  };
+
+  return (
+    <div className="min-h-screen bg-gray-50 py-12">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+        {/* Header */}
+        <div className="mb-8">
+          <h1 className="font-heading font-bold text-4xl text-gray-900 mb-4" data-testid="marketplace-title">
+            Seed Marketplace
+          </h1>
+          <p className="text-base text-gray-600">
+            Find and purchase quality seeds from certified distributors across Sierra Leone
+          </p>
+        </div>
+
+        {/* Filters */}
+        <Card className="p-6 mb-8 bg-white shadow-sm" data-testid="marketplace-filters">
+          <form onSubmit={handleSearch} className="space-y-4">
+            <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+              <div className="md:col-span-2">
+                <div className="relative">
+                  <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-gray-400" />
+                  <Input
+                    type="text"
+                    placeholder="Search seeds by name, variety, or distributor..."
+                    value={searchTerm}
+                    onChange={(e) => setSearchTerm(e.target.value)}
+                    className="pl-10"
+                    data-testid="search-input"
+                  />
+                </div>
+              </div>
+              <Select value={selectedRegion} onValueChange={setSelectedRegion}>
+                <SelectTrigger data-testid="region-filter">
+                  <SelectValue placeholder="All Regions" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All Regions</SelectItem>
+                  {regions.map((region) => (
+                    <SelectItem key={region} value={region}>{region}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              <Select value={selectedCrop} onValueChange={setSelectedCrop}>
+                <SelectTrigger data-testid="crop-filter">
+                  <SelectValue placeholder="All Crops" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All Crops</SelectItem>
+                  <SelectItem value="rice">Rice</SelectItem>
+                  <SelectItem value="maize">Maize</SelectItem>
+                  <SelectItem value="cassava">Cassava</SelectItem>
+                  <SelectItem value="groundnut">Groundnut</SelectItem>
+                  <SelectItem value="sorghum">Sorghum</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            <Button type="submit" className="bg-sierra-green hover:bg-green-700 text-white" data-testid="search-btn">
+              <Search className="w-4 h-4 mr-2" />
+              Search
+            </Button>
+          </form>
+        </Card>
+
+        {/* Seeds Grid */}
+        {loading ? (
+          <div className="text-center py-12" data-testid="loading-state">
+            <p className="text-gray-600">Loading seeds...</p>
+          </div>
+        ) : seeds.length === 0 ? (
+          <div className="text-center py-12" data-testid="empty-state">
+            <Package className="w-16 h-16 text-gray-300 mx-auto mb-4" />
+            <p className="text-gray-600 text-lg">No seeds found</p>
+            <p className="text-sm text-gray-500">Try adjusting your filters</p>
+          </div>
+        ) : (
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6" data-testid="seeds-grid">
+            {seeds.map((seed) => (
+              <Card key={seed.seed_id} className="overflow-hidden hover:shadow-lg transition-shadow" data-testid={`seed-card-${seed.seed_id}`}>
+                <div className="h-48 bg-gradient-to-br from-green-100 to-green-50 flex items-center justify-center">
+                  <Package className="w-16 h-16 text-sierra-green" />
+                </div>
+                <div className="p-6">
+                  <div className="flex items-start justify-between mb-3">
+                    <div>
+                      <h3 className="font-heading font-semibold text-xl text-gray-900 mb-1">{seed.name}</h3>
+                      <p className="text-sm text-gray-600">{seed.variety}</p>
+                    </div>
+                    <Badge className={getStatusColor(seed.status)}>
+                      {seed.status.replace('_', ' ')}
+                    </Badge>
+                  </div>
+
+                  <div className="space-y-2 mb-4">
+                    <div className="flex items-center text-sm text-gray-700">
+                      <MapPin className="w-4 h-4 mr-2 text-gray-400" />
+                      <span>{seed.region}</span>
+                    </div>
+                    <div className="flex items-center text-sm text-gray-700">
+                      <Phone className="w-4 h-4 mr-2 text-gray-400" />
+                      <span>{seed.distributor}</span>
+                    </div>
+                  </div>
+
+                  <div className="flex items-center justify-between pt-4 border-t border-gray-100">
+                    <div>
+                      <p className="text-sm text-gray-500">Stock</p>
+                      <p className="font-semibold text-gray-900">{seed.stock_quantity} {seed.unit}</p>
+                    </div>
+                    {seed.price_per_unit && (
+                      <div className="text-right">
+                        <p className="text-sm text-gray-500">Price</p>
+                        <p className="font-semibold text-sierra-green">Le {seed.price_per_unit}/{seed.unit}</p>
+                      </div>
+                    )}
+                  </div>
+
+                  <Badge className={`mt-4 ${getCertificationColor(seed.certification_status)}`}>
+                    {seed.certification_status}
+                  </Badge>
+                </div>
+              </Card>
+            ))}
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
