@@ -1,5 +1,5 @@
-import React, { useState, useEffect } from 'react';
-import { Search, Filter } from 'lucide-react';
+import React, { useState, useEffect, useCallback } from 'react';
+import { Search } from 'lucide-react';
 import { Card } from '../components/ui/card';
 import { Button } from '../components/ui/button';
 import { Input } from '../components/ui/input';
@@ -14,11 +14,7 @@ export default function Catalogues() {
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedCrop, setSelectedCrop] = useState('all');
 
-  useEffect(() => {
-    fetchSeeds();
-  }, [selectedCrop]);
-
-  const fetchSeeds = async () => {
+  const fetchSeeds = useCallback(async () => {
     try {
       setLoading(true);
       const params = {};
@@ -33,14 +29,18 @@ export default function Catalogues() {
     } finally {
       setLoading(false);
     }
-  };
+  }, [selectedCrop, searchTerm]);
+
+  useEffect(() => {
+    fetchSeeds();
+  }, [fetchSeeds]);
 
   const handleSearch = (e) => {
     e.preventDefault();
     fetchSeeds();
   };
 
-  const filteredSeeds = seeds.filter(seed => 
+  const filteredSeeds = seeds.filter(seed =>
     seed.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
     seed.variety.toLowerCase().includes(searchTerm.toLowerCase())
   );
@@ -48,34 +48,30 @@ export default function Catalogues() {
   return (
     <div className="min-h-screen bg-gray-50 py-12">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+        {/* Header */}
         <div className="mb-8">
-          <h1 className="font-heading font-bold text-4xl text-gray-900 mb-4" data-testid="catalogues-title">
-            Seed Catalogues
-          </h1>
+          <h1 className="font-heading font-bold text-4xl text-gray-900 mb-4">Seed Catalogues</h1>
           <p className="text-base text-gray-600">
             Browse officially released seed varieties in Sierra Leone
           </p>
         </div>
 
         {/* Filters */}
-        <Card className="p-6 mb-8 bg-white shadow-sm" data-testid="catalogue-filters">
+        <Card className="p-6 mb-8 bg-white shadow-sm">
           <form onSubmit={handleSearch} className="space-y-4">
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-              <div className="md:col-span-2">
-                <div className="relative">
-                  <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-gray-400" />
-                  <Input
-                    type="text"
-                    placeholder="Search by variety name..."
-                    value={searchTerm}
-                    onChange={(e) => setSearchTerm(e.target.value)}
-                    className="pl-10"
-                    data-testid="search-input"
-                  />
-                </div>
+              <div className="md:col-span-2 relative">
+                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-gray-400" />
+                <Input
+                  type="text"
+                  placeholder="Search by variety name..."
+                  value={searchTerm}
+                  onChange={(e) => setSearchTerm(e.target.value)}
+                  className="pl-10"
+                />
               </div>
               <Select value={selectedCrop} onValueChange={setSelectedCrop}>
-                <SelectTrigger data-testid="crop-filter">
+                <SelectTrigger>
                   <SelectValue placeholder="All Crops" />
                 </SelectTrigger>
                 <SelectContent>
@@ -88,30 +84,33 @@ export default function Catalogues() {
                 </SelectContent>
               </Select>
             </div>
+            <Button type="submit" className="bg-sierra-green hover:bg-green-700 text-white">
+              Search
+            </Button>
           </form>
         </Card>
 
         {/* Seeds Table */}
         {loading ? (
-          <div className="text-center py-12" data-testid="loading-state">
+          <div className="text-center py-12">
             <p className="text-gray-600">Loading catalogue...</p>
           </div>
         ) : (
-          <Card className="overflow-hidden bg-white shadow-sm" data-testid="catalogue-table">
+          <Card className="overflow-hidden bg-white shadow-sm">
             <div className="overflow-x-auto">
               <table className="w-full">
                 <thead className="bg-gray-50 border-b border-gray-200">
                   <tr>
-                    <th className="px-6 py-3 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider">Variety Name</th>
-                    <th className="px-6 py-3 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider">Crop Type</th>
-                    <th className="px-6 py-3 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider">Maturity</th>
-                    <th className="px-6 py-3 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider">Quality</th>
-                    <th className="px-6 py-3 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider">Status</th>
+                    <th className="px-6 py-3 text-left text-xs font-semibold text-gray-700 uppercase">Variety Name</th>
+                    <th className="px-6 py-3 text-left text-xs font-semibold text-gray-700 uppercase">Crop Type</th>
+                    <th className="px-6 py-3 text-left text-xs font-semibold text-gray-700 uppercase">Maturity</th>
+                    <th className="px-6 py-3 text-left text-xs font-semibold text-gray-700 uppercase">Quality</th>
+                    <th className="px-6 py-3 text-left text-xs font-semibold text-gray-700 uppercase">Status</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-gray-200">
                   {filteredSeeds.map((seed) => (
-                    <tr key={seed.seed_id} className="hover:bg-gray-50 transition-colors" data-testid={`catalogue-row-${seed.seed_id}`}>
+                    <tr key={seed.seed_id} className="hover:bg-gray-50">
                       <td className="px-6 py-4">
                         <div>
                           <p className="font-semibold text-gray-900">{seed.name}</p>
@@ -119,14 +118,10 @@ export default function Catalogues() {
                         </div>
                       </td>
                       <td className="px-6 py-4 text-sm text-gray-700 capitalize">{seed.crop_type}</td>
-                      <td className="px-6 py-4 text-sm text-gray-700">
-                        {seed.maturity_days ? `${seed.maturity_days} days` : 'N/A'}
-                      </td>
+                      <td className="px-6 py-4 text-sm text-gray-700">{seed.maturity_days ? `${seed.maturity_days} days` : 'N/A'}</td>
                       <td className="px-6 py-4">
                         {seed.quality_grade ? (
-                          <Badge className="bg-sierra-green/10 text-sierra-green border-sierra-green/20">
-                            {seed.quality_grade}
-                          </Badge>
+                          <Badge className="bg-sierra-green/10 text-sierra-green border-sierra-green/20">{seed.quality_grade}</Badge>
                         ) : (
                           <span className="text-sm text-gray-500">Not graded</span>
                         )}

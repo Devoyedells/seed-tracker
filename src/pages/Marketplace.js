@@ -1,5 +1,5 @@
-import React, { useState, useEffect } from 'react';
-import { Search, Filter, MapPin, Phone, Package } from 'lucide-react';
+import React, { useState, useEffect, useCallback } from 'react';
+import { Search, MapPin, Phone, Package } from 'lucide-react';
 import { Card } from '../components/ui/card';
 import { Button } from '../components/ui/button';
 import { Input } from '../components/ui/input';
@@ -18,11 +18,7 @@ export default function Marketplace() {
 
   const regions = ['Eastern Province', 'Northern Province', 'North West Province', 'Southern Province', 'Western Area'];
 
-  useEffect(() => {
-    fetchSeeds();
-  }, [selectedRegion, selectedCrop, selectedStatus]);
-
-  const fetchSeeds = async () => {
+  const fetchSeeds = useCallback(async () => {
     try {
       setLoading(true);
       const params = {};
@@ -39,7 +35,11 @@ export default function Marketplace() {
     } finally {
       setLoading(false);
     }
-  };
+  }, [selectedRegion, selectedCrop, selectedStatus, searchTerm]);
+
+  useEffect(() => {
+    fetchSeeds();
+  }, [fetchSeeds]);
 
   const handleSearch = (e) => {
     e.preventDefault();
@@ -69,44 +69,35 @@ export default function Marketplace() {
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         {/* Header */}
         <div className="mb-8">
-          <h1 className="font-heading font-bold text-4xl text-gray-900 mb-4" data-testid="marketplace-title">
-            Seed Marketplace
-          </h1>
-          <p className="text-base text-gray-600">
-            Find and purchase quality seeds from certified distributors across Sierra Leone
-          </p>
+          <h1 className="font-heading font-bold text-4xl text-gray-900 mb-4">Seed Marketplace</h1>
+          <p className="text-base text-gray-600">Find and purchase quality seeds from certified distributors across Sierra Leone</p>
         </div>
 
         {/* Filters */}
-        <Card className="p-6 mb-8 bg-white shadow-sm" data-testid="marketplace-filters">
+        <Card className="p-6 mb-8 bg-white shadow-sm">
           <form onSubmit={handleSearch} className="space-y-4">
             <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-              <div className="md:col-span-2">
-                <div className="relative">
-                  <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-gray-400" />
-                  <Input
-                    type="text"
-                    placeholder="Search seeds by name, variety, or distributor..."
-                    value={searchTerm}
-                    onChange={(e) => setSearchTerm(e.target.value)}
-                    className="pl-10"
-                    data-testid="search-input"
-                  />
-                </div>
+              <div className="md:col-span-2 relative">
+                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-gray-400" />
+                <Input
+                  type="text"
+                  placeholder="Search seeds by name, variety, or distributor..."
+                  value={searchTerm}
+                  onChange={(e) => setSearchTerm(e.target.value)}
+                  className="pl-10"
+                />
               </div>
               <Select value={selectedRegion} onValueChange={setSelectedRegion}>
-                <SelectTrigger data-testid="region-filter">
+                <SelectTrigger>
                   <SelectValue placeholder="All Regions" />
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="all">All Regions</SelectItem>
-                  {regions.map((region) => (
-                    <SelectItem key={region} value={region}>{region}</SelectItem>
-                  ))}
+                  {regions.map(region => <SelectItem key={region} value={region}>{region}</SelectItem>)}
                 </SelectContent>
               </Select>
               <Select value={selectedCrop} onValueChange={setSelectedCrop}>
-                <SelectTrigger data-testid="crop-filter">
+                <SelectTrigger>
                   <SelectValue placeholder="All Crops" />
                 </SelectTrigger>
                 <SelectContent>
@@ -119,28 +110,25 @@ export default function Marketplace() {
                 </SelectContent>
               </Select>
             </div>
-            <Button type="submit" className="bg-sierra-green hover:bg-green-700 text-white" data-testid="search-btn">
-              <Search className="w-4 h-4 mr-2" />
-              Search
-            </Button>
+            <Button type="submit" className="bg-sierra-green hover:bg-green-700 text-white">Search</Button>
           </form>
         </Card>
 
         {/* Seeds Grid */}
         {loading ? (
-          <div className="text-center py-12" data-testid="loading-state">
+          <div className="text-center py-12">
             <p className="text-gray-600">Loading seeds...</p>
           </div>
         ) : seeds.length === 0 ? (
-          <div className="text-center py-12" data-testid="empty-state">
+          <div className="text-center py-12">
             <Package className="w-16 h-16 text-gray-300 mx-auto mb-4" />
             <p className="text-gray-600 text-lg">No seeds found</p>
             <p className="text-sm text-gray-500">Try adjusting your filters</p>
           </div>
         ) : (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6" data-testid="seeds-grid">
-            {seeds.map((seed) => (
-              <Card key={seed.seed_id} className="overflow-hidden hover:shadow-lg transition-shadow" data-testid={`seed-card-${seed.seed_id}`}>
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            {seeds.map(seed => (
+              <Card key={seed.seed_id} className="overflow-hidden hover:shadow-lg transition-shadow">
                 <div className="h-48 bg-gradient-to-br from-green-100 to-green-50 flex items-center justify-center">
                   <Package className="w-16 h-16 text-sierra-green" />
                 </div>
@@ -150,11 +138,8 @@ export default function Marketplace() {
                       <h3 className="font-heading font-semibold text-xl text-gray-900 mb-1">{seed.name}</h3>
                       <p className="text-sm text-gray-600">{seed.variety}</p>
                     </div>
-                    <Badge className={getStatusColor(seed.status)}>
-                      {seed.status.replace('_', ' ')}
-                    </Badge>
+                    <Badge className={getStatusColor(seed.status)}>{seed.status.replace('_', ' ')}</Badge>
                   </div>
-
                   <div className="space-y-2 mb-4">
                     <div className="flex items-center text-sm text-gray-700">
                       <MapPin className="w-4 h-4 mr-2 text-gray-400" />
@@ -165,7 +150,6 @@ export default function Marketplace() {
                       <span>{seed.distributor}</span>
                     </div>
                   </div>
-
                   <div className="flex items-center justify-between pt-4 border-t border-gray-100">
                     <div>
                       <p className="text-sm text-gray-500">Stock</p>
@@ -178,7 +162,6 @@ export default function Marketplace() {
                       </div>
                     )}
                   </div>
-
                   <Badge className={`mt-4 ${getCertificationColor(seed.certification_status)}`}>
                     {seed.certification_status}
                   </Badge>
