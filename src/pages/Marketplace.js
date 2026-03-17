@@ -1,16 +1,14 @@
-import React, { useState, useEffect, useCallback } from 'react';
-import { Search, MapPin, Phone, Package } from 'lucide-react';
+// src/components/Marketplace.js
+import React, { useState, useMemo } from 'react';
+import { MapPin, Phone, Package, Search } from 'lucide-react';
 import { Card } from '../components/ui/card';
 import { Button } from '../components/ui/button';
 import { Input } from '../components/ui/input';
 import { Badge } from '../components/ui/badge';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../components/ui/select';
-import api from '../utils/api';
-import { toast } from 'sonner';
+import { seeds } from '../components/seeds'; // ← local seeds file
 
 export default function Marketplace() {
-  const [seeds, setSeeds] = useState([]);
-  const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedRegion, setSelectedRegion] = useState('all');
   const [selectedCrop, setSelectedCrop] = useState('all');
@@ -18,33 +16,19 @@ export default function Marketplace() {
 
   const regions = ['Eastern Province', 'Northern Province', 'North West Province', 'Southern Province', 'Western Area'];
 
-  const fetchSeeds = useCallback(async () => {
-    try {
-      setLoading(true);
-      const params = {};
-      if (selectedRegion !== 'all') params.region = selectedRegion;
-      if (selectedCrop !== 'all') params.crop_type = selectedCrop;
-      if (selectedStatus !== 'all') params.status = selectedStatus;
-      if (searchTerm) params.search = searchTerm;
-
-      const response = await api.get('/seeds', { params });
-      setSeeds(response.data);
-    } catch (error) {
-      console.error('Error fetching seeds:', error);
-      toast.error('Failed to load seeds');
-    } finally {
-      setLoading(false);
-    }
+  // Filter seeds locally
+  const filteredSeeds = useMemo(() => {
+    return seeds.filter(seed => {
+      const matchesRegion = selectedRegion === 'all' || seed.region === selectedRegion;
+      const matchesCrop = selectedCrop === 'all' || seed.crop_type === selectedCrop;
+      const matchesStatus = selectedStatus === 'all' || seed.status === selectedStatus;
+      const matchesSearch =
+        seed.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        seed.variety.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        seed.distributor.toLowerCase().includes(searchTerm.toLowerCase());
+      return matchesRegion && matchesCrop && matchesStatus && matchesSearch;
+    });
   }, [selectedRegion, selectedCrop, selectedStatus, searchTerm]);
-
-  useEffect(() => {
-    fetchSeeds();
-  }, [fetchSeeds]);
-
-  const handleSearch = (e) => {
-    e.preventDefault();
-    fetchSeeds();
-  };
 
   const getStatusColor = (status) => {
     switch (status) {
@@ -75,51 +59,44 @@ export default function Marketplace() {
 
         {/* Filters */}
         <Card className="p-6 mb-8 bg-white shadow-sm">
-          <form onSubmit={handleSearch} className="space-y-4">
-            <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-              <div className="md:col-span-2 relative">
-                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-gray-400" />
-                <Input
-                  type="text"
-                  placeholder="Search seeds by name, variety, or distributor..."
-                  value={searchTerm}
-                  onChange={(e) => setSearchTerm(e.target.value)}
-                  className="pl-10"
-                />
-              </div>
-              <Select value={selectedRegion} onValueChange={setSelectedRegion}>
-                <SelectTrigger>
-                  <SelectValue placeholder="All Regions" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">All Regions</SelectItem>
-                  {regions.map(region => <SelectItem key={region} value={region}>{region}</SelectItem>)}
-                </SelectContent>
-              </Select>
-              <Select value={selectedCrop} onValueChange={setSelectedCrop}>
-                <SelectTrigger>
-                  <SelectValue placeholder="All Crops" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">All Crops</SelectItem>
-                  <SelectItem value="rice">Rice</SelectItem>
-                  <SelectItem value="maize">Maize</SelectItem>
-                  <SelectItem value="cassava">Cassava</SelectItem>
-                  <SelectItem value="groundnut">Groundnut</SelectItem>
-                  <SelectItem value="sorghum">Sorghum</SelectItem>
-                </SelectContent>
-              </Select>
+          <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+            <div className="md:col-span-2 relative">
+              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-gray-400" />
+              <Input
+                type="text"
+                placeholder="Search seeds by name, variety, or distributor..."
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                className="pl-10"
+              />
             </div>
-            <Button type="submit" className="bg-sierra-green hover:bg-green-700 text-white">Search</Button>
-          </form>
+
+            <Select value={selectedRegion} onValueChange={setSelectedRegion}>
+              <SelectTrigger><SelectValue placeholder="All Regions" /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All Regions</SelectItem>
+                {regions.map(region => <SelectItem key={region} value={region}>{region}</SelectItem>)}
+              </SelectContent>
+            </Select>
+
+            <Select value={selectedCrop} onValueChange={setSelectedCrop}>
+              <SelectTrigger><SelectValue placeholder="All Crops" /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All Crops</SelectItem>
+                <SelectItem value="rice">Rice</SelectItem>
+                <SelectItem value="maize">Maize</SelectItem>
+                <SelectItem value="cassava">Cassava</SelectItem>
+                <SelectItem value="groundnut">Groundnut</SelectItem>
+                <SelectItem value="sorghum">Sorghum</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+
+          <Button className="mt-4 bg-sierra-green hover:bg-green-700 text-white">Search</Button>
         </Card>
 
         {/* Seeds Grid */}
-        {loading ? (
-          <div className="text-center py-12">
-            <p className="text-gray-600">Loading seeds...</p>
-          </div>
-        ) : seeds.length === 0 ? (
+        {filteredSeeds.length === 0 ? (
           <div className="text-center py-12">
             <Package className="w-16 h-16 text-gray-300 mx-auto mb-4" />
             <p className="text-gray-600 text-lg">No seeds found</p>
@@ -127,7 +104,7 @@ export default function Marketplace() {
           </div>
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {seeds.map(seed => (
+            {filteredSeeds.map(seed => (
               <Card key={seed.seed_id} className="overflow-hidden hover:shadow-lg transition-shadow">
                 <div className="h-48 bg-gradient-to-br from-green-100 to-green-50 flex items-center justify-center">
                   <Package className="w-16 h-16 text-sierra-green" />
